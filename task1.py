@@ -9,31 +9,45 @@ def getValidC():
     return tk
 
 
-c = getValidC().strip(" ")
+def oracle(ct:bytes):
+    ct_h = ct.hex()
+    return requests.get(f"http://127.0.0.1:8080/?enc={ct_h}").status_code == 404
 
-# split up c
-iv_h = c[:32]
-c1_h = c[32:64]
-c2_h = c[64:96]
-c3_h = c[96:]
 
-# m1 padding
-decrypted_block = deque([])
-iv_b = bytearray(bytes.fromhex(iv_h))
-c1_b = bytes.fromhex(c1_h)
-padding = 0
-prev = iv_b
-for i in range(15, 0, -1):
-    padding += 1
-    for guess in range(0,256):
-        iv_b[i] = (iv_b[i] + 1) % 256
-        joined = iv_b.hex() + c1_b.hex()
-        url = f"http://127.0.0.1:8080/?enc={joined}"
-        if requests.get(url).status_code == 404:
-            decrypted_block.appendleft(xor(xor(iv_b[i], padding), prev[i]))
-            iv_b[i:] = [(x+1)%256 for x in iv_b[i:]]
-            break
-    # if len(correct_guesses) <= i:
-    #     break
-correct_guesses = list(correct_guesses)
-print (correct_guesses)
+# Adapted code from https://github.com/flast101/padding-oracle-attack-explained by flast101
+def paddingOracleAttack(ct):
+    block_num = len(ct)//16
+    msg = bytes()
+    for i in range(block_num,0,-1):
+        curr_ct_block = ct[(i-1)*16:i*16]
+        if (i==1):
+            prev_ct_block = bytearray(ct[0:16]) #the first 16 bytes are the IV
+        else:
+            prev_ct_block = ct[(i-2)*16:(i-1)*16]
+        guess_block = prev_ct_block
+        curr_msg_block = bytearray(ct[0:16])
+        padding = 0
+        for j in range(16,0, -1):
+            padding+=1
+            for val in range(0,256):
+                guess_block = bytearray(guess_block)
+                guess_block[j-1] = (guess_block[j-1]+1)%256
+                joined_ct_block = bytes(guess_block)+curr_ct_block
+                if(oracle(joined_ct_block)):
+                    curr_msg_block[-padding] = guess_block[-padding] ^ prev_ct_block[-padding] ^ padding
+                    for k in range(1, padding+1):
+                        guess_block[-k] = padding+1 ^ curr_msg_block[-k] ^ prev_ct_block[-k]
+                    break
+        msg = bytes(curr_msg_block) + bytes(msg)
+    return msg[16:-msg[-1]]
+
+
+
+
+
+c = getValidC()
+c = bytes.fromhex(c)
+print(c)
+
+out = paddingOracleAttack(c)
+print(out)
