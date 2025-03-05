@@ -38,3 +38,6 @@ def intToB64(inp):
     enc=base64.b64encode(str(inp).encode())
     return enc
 
+def strToBin(text):
+    bin = ''.join(format(ord(char),'08b') for char in text)
+    return bin
