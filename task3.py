@@ -1,7 +1,7 @@
 import convert
 import urllib.parse
 import requests
-
+from xor import xor
 def l_rotate(num, rot):
     return ((num << rot) | (num >> (32-rot))) & 0xFFFFFFFF
 
@@ -68,6 +68,46 @@ def sha1_mod(hash, msg, length):
     hh = (h0 << 128) | (h1 << 96) | (h2 << 64) | (h3 << 32) | h4
     return hh
 
+def add_padding(msg):
+    msg_len = len(msg) * 8
+    msg_len_bin = bin(msg_len)[2:].zfill(64)
+    msg_bin = convert.strToBin(msg)
+    msg_bin += "1"
+    zeros = 448 - ((msg_len + 1) % 512)
+    msg_bin += "0" * zeros
+    msg_bin += msg_len_bin
+
+    n = int(msg_bin,2)
+    b = n.to_bytes((n.bit_length() + 7) // 8, 'big')
+    return b
+
+# url = "http://127.0.0.1:8080/"
+#
+# msg = input("Enter a message: ")
+# h1 = int(input("Enter it's hash: "),16)
+#
+# for i in range(33):
+#     padded = add_padding("a"*i +msg)
+#     forged_message = b'Hello'
+#
+#     h2 = sha1_mod(h1,forged_message, len(padded)*8+len(forged_message)*8)
+#
+#     final_msg = padded[i:]+forged_message
+#
+#     url_string = urllib.parse.quote_from_bytes(final_msg)
+#
+#     headers = {
+#         'who':"Abbott",
+#         'what':url_string,
+#         'mac':hex(h2)[2:]
+#     }
+#
+#     r = requests.post(url, data=headers)
+#
+
+
+
+#HMAC
 
 def sha1(msg):
     h0 = 0x67452301
@@ -79,7 +119,10 @@ def sha1(msg):
     #preprocessing
     msg_len = len(msg)*8
     msg_len_bin = bin(msg_len)[2:].zfill(64)
-    msg_bin = convert.strToBin(msg)
+    if isinstance(msg, str):
+        msg_bin = convert.strToBin(msg)
+    elif isinstance(msg, bytes):
+        msg_bin = bin(int.from_bytes(msg, "big"))[2:].zfill(len(msg) * 8)
     msg_bin += "1"
     zeros = 448 - ((msg_len+1) % 512)
     msg_bin += "0"*zeros
@@ -132,52 +175,28 @@ def sha1(msg):
     return hh
 
 
-# def validate(message, digest):
-#     key = "YELLOW SUBMARINE"
-#     return authSHA1(key,message) == digest
-#
-# for i in range (1,33):
-#     m, d = forge(message, message_digest, i, "EXPLOIT")
-#     if validate(m,d):
-#         print("DONE")
-#         print(f"Assumed Key Length is {i}")
-#         print(f"Forged Message: {m}")
-#         print(f"Forged Digest: {d}")
+def hmac(key:bytes, msg:bytes, blockSize:int, outputSize:int):
+    block_sized_key = computeBlockSizedKey(key,blockSize,outputSize)
+    o_key_pad = xor(block_sized_key, b"\x5c"*blockSize)
+    i_key_pad = xor(block_sized_key, b"\x36"*blockSize)
+    return sha1(o_key_pad + sha1(i_key_pad+msg).to_bytes(outputSize,'big'))
 
-def add_padding(msg):
-    msg_len = len(msg) * 8
-    msg_len_bin = bin(msg_len)[2:].zfill(64)
-    msg_bin = convert.strToBin(msg)
-    msg_bin += "1"
-    zeros = 448 - ((msg_len + 1) % 512)
-    msg_bin += "0" * zeros
-    msg_bin += msg_len_bin
+def computeBlockSizedKey(key:bytes, blockSize:int, outputSize:int):
+    if len(key) > blockSize:
+        key = int.to_bytes(sha1(key), outputSize, 'big') + b'\x00'*(blockSize-outputSize)
 
-    n = int(msg_bin,2)
-    b = n.to_bytes((n.bit_length() + 7) // 8, 'big')
-    return b
+    elif len(key) < blockSize:
+        return key+b"\x00"*(blockSize-len(key))
 
-url = "http://127.0.0.1:8080/"
+    return key
 
-msg = input("Enter a message: ")
-h1 = int(input("Enter it's hash: "),16)
+key = b'\xaa'*80
+msg = b'Test Using Larger Than Block-Size Key - Hash Key First'
 
-for i in range(33):
-    padded = add_padding("a"*i +msg)
-    forged_message = b'Hello'
+res = hmac(b'Jefe', b'what do ya want for nothing?', 64, 20)
 
-    h2 = sha1_mod(h1,forged_message, len(padded)*8+len(forged_message)*8)
-
-    final_msg = padded[i:]+forged_message
-
-    url_string = urllib.parse.quote_from_bytes(final_msg)
-
-    headers = {
-        'who':"Abbott",
-        'what':url_string,
-        'mac':hex(h2)[2:]
-    }
-
-    r = requests.post(url, data=headers)
+print(hex(res))
 
 
+res = hmac(key,msg,64,20)
+print(hex(res))
