@@ -41,3 +41,6 @@ def intToB64(inp):
 def strToBin(text):
     bin = ''.join(format(ord(char),'08b') for char in text)
     return bin
+
+def bytesToBin(text):
+    return bin(int.from_bytes(text))

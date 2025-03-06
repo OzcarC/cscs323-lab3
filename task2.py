@@ -1,9 +1,10 @@
 import convert
-import hashlib
+import random
+import string
 
 # adapted code from https://en.wikipedia.org/wiki/SHA-1#SHA-1_pseudocode
 def l_rotate(num, rot):
-    return (num << rot) & 0xFFFFFFFF
+    return ((num << rot) | (num >> (32-rot))) & 0xFFFFFFFF
 
 def sha1(msg):
     h0 = 0x67452301
@@ -29,7 +30,7 @@ def sha1(msg):
         words = []
         for i in range(16):
             words.append(chunk[i*32:(i+1)*32])
-        for i in range(16,79):
+        for i in range(16,80):
             temp = l_rotate((int(words[i-3],2) ^ int(words[i-8],2) ^ int(words[i-14],2) ^ int(words[i-16],2)),1)
             words.append(bin(temp)[2:].zfill(32))
 
@@ -37,7 +38,7 @@ def sha1(msg):
         a,b,c,d,e = h0,h1,h2,h3,h4
 
         #main loop
-        for i in range(79):
+        for i in range(80):
             if 0 <= i <= 19:
                 f = (b & c) | ((~b) & d)
                 k = 0x5A827999
@@ -51,28 +52,35 @@ def sha1(msg):
                 f = b ^ c ^ d
                 k = 0xCA62C1D6
 
-            temp = l_rotate(a,5) + f + e + k + int(words[i],2)
+            temp = (l_rotate(a,5) + f + e + k + int(words[i],2) & 0xFFFFFFFF)
             e = d
             d = c
             c = l_rotate(b,30)
             b = a
             a = temp
 
-        h0 = h0 + a
-        h1 = h1 + b
-        h2 = h2 + c
-        h3 = h3 + d
-        h4 = h4 + e
+        h0 = (h0 + a) & 0xFFFFFFFF
+        h1 = (h1 + b) & 0xFFFFFFFF
+        h2 = (h2 + c) & 0xFFFFFFFF
+        h3 = (h3 + d) & 0xFFFFFFFF
+        h4 = (h4 + e) & 0xFFFFFFFF
 
     hh = (h0 << 128) | (h1 << 96) | (h2 << 64) | (h3 << 32) | h4
     return hh
 
+def rand_str(length):
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
-data = "abc"
-print(sha1(data))
-sha1_hash = hashlib.sha1()
-sha1_hash.update(data.encode('ascii'))
+hashtable = {}
 
-digest = sha1_hash.digest()
-digest = int.from_bytes(digest)
-print(digest)
+
+while True:
+    msg = rand_str(36)
+    hash = bin(sha1(msg))[2:52]
+    # hash = bin(int(hashlib.sha1(msg.encode()).hexdigest(), 16))[2:].zfill(160)[:40]
+    # print(f"H({msg}) = {hash}")
+    if hash in hashtable:
+        print(f"Collisions:\n{hashtable[hash]}: {bin(sha1(hashtable[hash]))}\n{msg}: {bin(sha1(msg))}")
+        break
+    else:
+        hashtable[hash] = msg
