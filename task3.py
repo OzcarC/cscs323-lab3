@@ -81,29 +81,29 @@ def add_padding(msg):
     b = n.to_bytes((n.bit_length() + 7) // 8, 'big')
     return b
 
-# url = "http://127.0.0.1:8080/"
-#
-# msg = input("Enter a message: ")
-# h1 = int(input("Enter it's hash: "),16)
-#
-# for i in range(33):
-#     padded = add_padding("a"*i +msg)
-#     forged_message = b'Hello'
-#
-#     h2 = sha1_mod(h1,forged_message, len(padded)*8+len(forged_message)*8)
-#
-#     final_msg = padded[i:]+forged_message
-#
-#     url_string = urllib.parse.quote_from_bytes(final_msg)
-#
-#     headers = {
-#         'who':"Abbott",
-#         'what':url_string,
-#         'mac':hex(h2)[2:]
-#     }
-#
-#     r = requests.post(url, data=headers)
-#
+url = "http://127.0.0.1:8080/"
+
+msg = input("Enter a message: ")
+h1 = int(input("Enter it's hash: "),16)
+
+for i in range(33):
+    padded = add_padding("a"*i +msg)
+    forged_message = b'Hello'
+
+    h2 = sha1_mod(h1,forged_message, len(padded)*8+len(forged_message)*8)
+
+    final_msg = padded[i:]+forged_message
+
+    url_string = urllib.parse.quote_from_bytes(final_msg)
+
+    headers = {
+        'who':"Abbott",
+        'what':url_string,
+        'mac':hex(h2)[2:]
+    }
+
+    r = requests.post(url, data=headers)
+
 
 
 
