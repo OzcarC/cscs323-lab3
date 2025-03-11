@@ -2,4 +2,4 @@ pycryptodome
 web.py
 requests
 beautifulsoup4
-
+numpy

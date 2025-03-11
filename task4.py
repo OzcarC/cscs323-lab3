@@ -1,13 +1,14 @@
 import requests
 import time
+import numpy as np
 
-url = "http://localhost:8080/"
+url = "http://127.0.0.1:8080/"
+run_times = 30
 
 max_time = -1
 h_str = "00"*20
 max_guess = ["" for i in range(20)]
 
-possible = 2
 for j in range(20):
     print(max_guess)
     alt_guesses = []
@@ -15,11 +16,13 @@ for j in range(20):
     for i in range(256):
         guess_byte = hex(i)[2:].zfill(2)
         guess = ''.join(max_guess[:j]) + guess_byte + "00"*(20-(j+1))
-        timestamp = str(time.time())
-        st_t = time.time()
-        r = requests.get(url+"?q=IHATEYOUIHATEYOU&time="+timestamp+"&mac="+guess)
-        end_t = time.time()
-        time_taken = end_t - st_t
+        times = []
+        for _ in range(run_times):
+            st_t = time.perf_counter()
+            r = requests.get(url+"?q=Message&mac="+guess)
+            end_t = time.perf_counter()
+            times.append(end_t-st_t)
+        time_taken = np.median(times)
 
         if time_taken > max_time:
             if max_guess[j] != '':
@@ -33,5 +36,3 @@ for j in range(20):
 
 max_guess = ''.join(max_guess)
 print(max_guess)
-
-
